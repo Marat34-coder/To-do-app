@@ -1,69 +1,113 @@
 import json
 from datetime import datetime
-
 FILE = "tasks.json"
 
-def load():
+def load_tasks():
     try:
-        with open(FILE, "r", encoding="utf-8") as f:
+        with open(FILE, 'r', encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-def save(items):
+def save_tasks(tasks):
     with open(FILE, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
+        json.dump(tasks, f, ensure_ascii=False, indent=2 )
 
-def add_item():
-    name = input("Название задачи: ")
-    status = input("Статус задачи (new, in_progress, done): ")
-    
-    items = load()
-    items.append({
-        "name": name,
-        "status": status,
-        "date": datetime.now().strftime("%Y-%m-%d")
-    })
-    save(items)
-    print("Задача добавлена!")
+def show_overdue(tasks):
+    today = datetime.now().strftime("%Y-%m-%d")
+    overdue = []  
 
-def report():
-    items = load()
-    if not items:
-        print("Список пуст")
-        return
+    for task in tasks:  
+        is_done = task.get("done", False)
+        due_date = task.get("due_date")
 
-    print("\nТвои задачи:")
-    for i, task in enumerate(items, start=1):
-        status_icon = "✅" if task["status"] == "done" else "⏳" if task["status"] == "in_progress" else "🆕"
-        print(f"{i}. {status_icon} {task['name']} | {task['status']} | {task['date']}")
+        if due_date is None:
+            continue
+        if due_date >= today:
+            continue
+        if is_done:
+            continue
 
-def delete_item():
-    report()  
-    try:
-        idx = int(input("Введи номер задачи для удаления: ")) - 1
-        items = load()
-        
-        if 0 <= idx < len(items):
-            removed = items.pop(idx)
-            save(items)
-            print(f"Задача удалена: {removed['name']}")
-        else:
-            print("Такого номера нет.")
-    except ValueError:
-        print("Вводи только число.")
-
-while True:
-    print("\n1. Добавить задачу\n2. Показать задачи\n3. Удалить задачу\n4. Выход")
-    choice = input("Выбери: ")
-    if choice == "1":
-        add_item()
-    elif choice == "2":
-        report()
-    elif choice == "3":
-        delete_item()
-    elif choice == "4":
-        print("До встречи!")
-        break
+        overdue.append(task)
+    if overdue:
+        print("⚠️Просроченные задачи!")
+        for i, t in enumerate(overdue, start=1):
+            category = task.get("category", "-")
+            print(f"{i}. [{category}] {t['text']} (срок: {t['due_date']})")
+        print()
     else:
-        print("Неверный выбор, попробуй ещё раз.")
+        print("Просроченных задач нету.Ты молодец!🎉\n")
+
+def add_task(tasks):
+    text = input("Текст задачи: ").strip()
+    if not text:
+        print("Задача не может быть пустой")
+        return
+    category = input("Категория (например, Дом, Программирование): ").strip() or "-"
+    due_date = input("Срок (в формате ГГГГ-ММ-ДД, или просто Enter если нет): ").strip()
+    done = False
+    new_task = {
+    "text": text,
+    "category": category,
+    "due_date": due_date if due_date else None,
+    "done": done
+    }
+    tasks.append(new_task)
+    save_tasks(tasks)
+    print("✅Задача добавлена!\n")
+
+
+
+def show_all(tasks):
+    if not tasks:
+        print("Список задач пуст\n")
+        return
+    
+    print("📋 Все задачи:")
+    for i, t in enumerate(tasks, start=1):
+        status = "✅" if t.get["done", "-"] else "⏳"
+        category = t.get("category", "-")
+        due = t.get("due_date", "без срока")
+        print(f"{i}. {status} [{category}] {t['text']} (срок: {due})")
+    print()
+
+def toggle_done(tasks):
+    try:
+        idx = int(input("Номер задачи, которую отметить как выполненную: ")) - 1
+        if 0 <= idx < len(tasks):
+            tasks[idx]["done"] = not tasks[idx].get("done", False)
+            save_tasks(tasks)
+            status = "выполнена" if tasks[idx]["done"] else "не выполнена"
+            print(f"Задача отмечена как {status}\n")
+        else:
+            print("Такого номера нет!")
+    except ValueError:
+        print("Вводите только числа.\n")
+
+def main():
+    tasks = load_tasks()
+    show_overdue(tasks)
+
+    while True:
+        print("--- Меню ---")
+        print("1. Показать все задачи")
+        print("2. Добавить задачу")
+        print("3. Отметить как выполненное")
+        print("4. Показать просроченные (ещё раз)")
+        print("5. Выход")
+        choice = input("Выберите вариант (1-5): ").strip()
+        if choice == "1":
+            show_all(tasks)
+        elif choice == "2":
+            add_task(tasks)
+        elif choice == "3":
+            toggle_done(tasks)
+        elif choice == "4":
+            show_overdue(tasks)
+        elif choice == "5":
+            print("Пока!👋")
+        else:
+            print("Не понимаю вас.Вводите только числа, пожалуйста!")
+
+if __name__ == "__main__":
+    main()
